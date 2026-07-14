@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Subscription Tracker</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  .sub { color: #888; margin-top: 0; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 0.5rem 0.6rem; border-bottom: 1px solid #ccc3; text-align: left; }
+  th { font-weight: 600; }
+  input, select { width: 100%; box-sizing: border-box; padding: 0.3rem; font-size: 0.85rem; border: 1px solid #ccc5; border-radius: 4px; background: transparent; color: inherit; }
+  input[type=number] { width: 5rem; }
+  td.actions { white-space: nowrap; }
+  button { cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 4px; border: 1px solid #ccc5; background: transparent; color: inherit; font-size: 0.8rem; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: white; }
+  button.danger { background: #dc2626; border-color: #dc2626; color: white; }
+  tr.due-soon { background: #f59e0b22; }
+  tr.overdue { background: #dc262622; }
+  tr.inactive { opacity: 0.45; }
+  .add-row { margin-top: 1.5rem; border-top: 2px solid #ccc5; padding-top: 1rem; }
+  .add-row h2 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .add-grid { display: grid; grid-template-columns: repeat(6, 1fr) auto; gap: 0.5rem; align-items: end; }
+  .add-grid label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 0.2rem; }
+  footer { margin-top: 2rem; }
+  .status { font-size: 0.8rem; color: #888; margin-left: 0.5rem; }
+</style>
+</head>
+<body>
+
+<h1>Subscription Tracker</h1>
+<p class="sub">Edit any field and hit Save. You'll get a Discord/email reminder once a subscription is within its notify window before renewal.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Platform</th>
+      <th>Price</th>
+      <th>Start date</th>
+      <th>Cycle</th>
+      <th>Notify (days before)</th>
+      <th>Next renewal</th>
+      <th>Days left</th>
+      <th>Active</th>
+      <th class="actions">Actions</th>
+    </tr>
+  </thead>
+  <tbody id="sub-rows">
+    {% for s in subs %}
+    <tr data-id="{{ s.id }}" class="{{ 'overdue' if s.days_until_renewal <= 0 else ('due-soon' if s.days_until_renewal <= s.notify_days_before else '') }} {{ '' if s.active else 'inactive' }}">
+      <td><input data-field="name" value="{{ s.name }}"></td>
+      <td><input data-field="platform" value="{{ s.platform }}"></td>
+      <td><input data-field="price" type="number" step="0.01" value="{{ s.price }}"></td>
+      <td><input data-field="start_date" type="date" value="{{ s.start_date }}"></td>
+      <td>
+        <select data-field="billing_cycle">
+          <option value="monthly" {{ 'selected' if s.billing_cycle == 'monthly' }}>monthly</option>
+          <option value="yearly" {{ 'selected' if s.billing_cycle == 'yearly' }}>yearly</option>
+        </select>
+      </td>
+      <td><input data-field="notify_days_before" type="number" min="0" value="{{ s.notify_days_before }}"></td>
+      <td>{{ s.next_renewal }}</td>
+      <td>{{ s.days_until_renewal }}</td>
+      <td><input data-field="active" type="checkbox" {{ 'checked' if s.active }} style="width:auto;"></td>
+      <td class="actions">
+        <button class="primary" onclick="saveRow(this)">Save</button>
+        <button class="danger" onclick="deleteRow(this)">Delete</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="add-row">
+  <h2>Add subscription</h2>
+  <div class="add-grid">
+    <div><label>Name</label><input id="new-name"></div>
+    <div><label>Platform</label><input id="new-platform"></div>
+    <div><label>Price</label><input id="new-price" type="number" step="0.01" value="0"></div>
+    <div><label>Start date</label><input id="new-start" type="date"></div>
+    <div><label>Cycle</label>
+      <select id="new-cycle">
+        <option value="monthly">monthly</option>
+        <option value="yearly">yearly</option>
+      </select>
+    </div>
+    <div><label>Notify (days before)</label><input id="new-notify" type="number" min="0" value="5"></div>
+    <div><button class="primary" onclick="addRow()">Add</button></div>
+  </div>
+</div>
+
+<footer>
+  <button onclick="testNotify()">Send test notification</button>
+  <span id="test-status" class="status"></span>
+</footer>
+
+<script>
+async function saveRow(btn) {
+  const tr = btn.closest('tr');
+  const id = tr.dataset.id;
+  const payload = {};
+  tr.querySelectorAll('[data-field]').forEach(el => {
+    if (el.type === 'checkbox') payload[el.dataset.field] = el.checked ? 1 : 0;
+    else payload[el.dataset.field] = el.value;
+  });
+  const res = await fetch(`/api/subscriptions/${id}`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+  });
+  if (res.ok) location.reload();
+}
+
+async function deleteRow(btn) {
+  const tr = btn.closest('tr');
+  if (!confirm(`Delete "${tr.querySelector('[data-field=name]').value}"?`)) return;
+  const res = await fetch(`/api/subscriptions/${tr.dataset.id}`, { method: 'DELETE' });
+  if (res.ok) location.reload();
+}
+
+async function addRow() {
+  const payload = {
+    name: document.getElementById('new-name').value,
+    platform: document.getElementById('new-platform').value,
+    price: document.getElementById('new-price').value,
+    start_date: document.getElementById('new-start').value,
+    billing_cycle: document.getElementById('new-cycle').value,
+    notify_days_before: document.getElementById('new-notify').value,
+  };
+  if (!payload.name || !payload.start_date) { alert('Name and start date are required.'); return; }
+  const res = await fetch('/api/subscriptions', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+  });
+  if (res.ok) location.reload();
+}
+
+async function testNotify() {
+  const status = document.getElementById('test-status');
+  status.textContent = 'Sending...';
+  const res = await fetch('/api/test-notify', { method: 'POST' });
+  status.textContent = res.ok ? 'Sent (check Discord/email).' : 'Failed.';
+}
+</script>
+
+</body>
+</html>
