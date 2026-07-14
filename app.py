@@ -9,7 +9,7 @@ import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, Response
 
 load_dotenv()
 
@@ -21,8 +21,26 @@ SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 SMTP_PASS = os.environ.get("SMTP_PASS", "").strip()
 NOTIFY_EMAIL_TO = os.environ.get("NOTIFY_EMAIL_TO", "").strip()
 NOTIFY_CHECK_HOUR = int(os.environ.get("NOTIFY_CHECK_HOUR", "9"))
+BASIC_AUTH_USER = os.environ.get("BASIC_AUTH_USER", "").strip()
+BASIC_AUTH_PASS = os.environ.get("BASIC_AUTH_PASS", "").strip()
 
 app = Flask(__name__)
+
+
+@app.route("/healthz")
+def healthz():
+    return "ok"
+
+
+@app.before_request
+def require_basic_auth():
+    if request.path == "/healthz" or not BASIC_AUTH_USER:
+        return  # auth disabled if no user configured (e.g. local dev)
+    auth = request.authorization
+    if not auth or auth.username != BASIC_AUTH_USER or auth.password != BASIC_AUTH_PASS:
+        return Response(
+            "Authentication required", 401, {"WWW-Authenticate": 'Basic realm="Subscription Tracker"'}
+        )
 
 
 def get_db():
