@@ -83,7 +83,7 @@ This app runs as part of a small self-hosted infrastructure:
 GitHub (Bazautomate/subscription-tracker, public repo)
         │  Coolify pulls + builds on push (auto-deploy enabled)
         ▼
-n8n VM (<n8n-vm-ip>) — Coolify-managed
+n8n VM (see ~/.ssh/config host "n8n") — Coolify-managed
   Project: "vibe code"
   App: subscription-tracker, container port 5000 → host port 8010
   Persistent volume: /app/data (survives redeploys)
@@ -91,7 +91,7 @@ n8n VM (<n8n-vm-ip>) — Coolify-managed
         │  maintains an outbound WireGuard tunnel to Pangolin —
         │  no inbound firewall ports needed on this VM
         ▼
-Pangolin VM (<pangolin-vm-ip>)
+Pangolin VM (see ~/.ssh/config host "pangolin")
   Traefik terminates TLS (Let's Encrypt) for *.baz-n8n.xyz
   Resource: subs.baz-n8n.xyz → site "n8n-server" → target 127.0.0.1:8010
         ▼

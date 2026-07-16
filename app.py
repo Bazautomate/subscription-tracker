@@ -15,8 +15,8 @@ load_dotenv()
 
 DB_PATH = os.environ.get("DB_PATH", "data/subscriptions.db")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
-# Pings this user in the reminder. Default preserves the ID the live container was patched with.
-DISCORD_USER_ID = os.environ.get("DISCORD_USER_ID", "<your-discord-user-id>").strip()
+# Discord user ID to @-mention in reminders. Blank = no mention.
+DISCORD_USER_ID = os.environ.get("DISCORD_USER_ID", "").strip()
 CURRENCY = os.environ.get("CURRENCY", "€").strip()
 SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
