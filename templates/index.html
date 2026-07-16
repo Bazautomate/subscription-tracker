@@ -2,124 +2,362 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Subscription Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>Subscriptions</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
-  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
-  .sub { color: #888; margin-top: 0; margin-bottom: 1.5rem; font-size: 0.9rem; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th, td { padding: 0.5rem 0.6rem; border-bottom: 1px solid #ccc3; text-align: left; }
-  th { font-weight: 600; }
-  input, select { width: 100%; box-sizing: border-box; padding: 0.3rem; font-size: 0.85rem; border: 1px solid #ccc5; border-radius: 4px; background: transparent; color: inherit; }
-  input[type=number] { width: 5rem; }
-  td.actions { white-space: nowrap; }
-  button { cursor: pointer; padding: 0.3rem 0.6rem; border-radius: 4px; border: 1px solid #ccc5; background: transparent; color: inherit; font-size: 0.8rem; }
-  button.primary { background: #2563eb; border-color: #2563eb; color: white; }
-  button.danger { background: #dc2626; border-color: #dc2626; color: white; }
-  tr.due-soon { background: #f59e0b22; }
-  tr.overdue { background: #dc262622; }
-  tr.inactive { opacity: 0.45; }
-  .add-row { margin-top: 1.5rem; border-top: 2px solid #ccc5; padding-top: 1rem; }
-  .add-row h2 { font-size: 1rem; margin-bottom: 0.5rem; }
-  .add-grid { display: grid; grid-template-columns: repeat(6, 1fr) auto; gap: 0.5rem; align-items: end; }
-  .add-grid label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 0.2rem; }
-  footer { margin-top: 2rem; }
-  .status { font-size: 0.8rem; color: #888; margin-left: 0.5rem; }
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --panel-2: #fbfbfd;
+    --text: #12141a;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #4f46e5;
+    --accent-fg: #ffffff;
+    --danger: #dc2626;
+    --warn-bg: #fef3c7;
+    --warn-fg: #92400e;
+    --over-bg: #fee2e2;
+    --over-fg: #991b1b;
+    --ok-bg: #e7f2ec;
+    --ok-fg: #166534;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0d12;
+      --panel: #14171f;
+      --panel-2: #191d27;
+      --text: #e8eaf0;
+      --muted: #9aa3b2;
+      --line: #262b37;
+      --accent: #6366f1;
+      --warn-bg: #3b2f0e;
+      --warn-fg: #fcd34d;
+      --over-bg: #3d1519;
+      --over-fg: #fca5a5;
+      --ok-bg: #10281c;
+      --ok-fg: #6ee7b7;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 1.25rem 1rem 4rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+
+  header { margin-bottom: 1.25rem; }
+  h1 { font-size: 1.5rem; margin: 0; letter-spacing: -0.02em; }
+  header p { color: var(--muted); margin: .25rem 0 0; font-size: .9rem; }
+
+  /* ---- stat tiles ---- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: .9rem 1rem;
+    box-shadow: var(--shadow);
+  }
+  .stat .label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .stat .value { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.02em; margin-top: .15rem; font-variant-numeric: tabular-nums; }
+  .stat .sub { font-size: .75rem; color: var(--muted); }
+  .stat.hero { background: linear-gradient(135deg, var(--accent), #7c3aed); border-color: transparent; color: #fff; }
+  .stat.hero .label, .stat.hero .sub { color: rgba(255,255,255,.85); }
+
+  /* ---- sections ---- */
+  section { margin-bottom: 2rem; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
+  h2 { font-size: 1.05rem; margin: 0; letter-spacing: -0.01em; }
+  .count { color: var(--muted); font-size: .8rem; font-weight: 500; }
+
+  /* ---- cards ---- */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: .85rem 1rem;
+    margin-bottom: .6rem;
+    box-shadow: var(--shadow);
+  }
+  .card.inactive { opacity: .5; }
+  .card-main { display: flex; align-items: center; gap: .85rem; }
+  .card-id { flex: 1; min-width: 0; }
+  .card-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-meta { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-price { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card-price .cycle { font-weight: 400; font-size: .75rem; color: var(--muted); }
+
+  .badge {
+    display: inline-block; padding: .2rem .5rem; border-radius: 999px;
+    font-size: .72rem; font-weight: 600; white-space: nowrap;
+    background: var(--ok-bg); color: var(--ok-fg);
+  }
+  .badge.soon { background: var(--warn-bg); color: var(--warn-fg); }
+  .badge.over { background: var(--over-bg); color: var(--over-fg); }
+  .badge.off  { background: var(--line); color: var(--muted); }
+
+  /* ---- edit panel ---- */
+  .edit { display: none; margin-top: .85rem; padding-top: .85rem; border-top: 1px solid var(--line); }
+  .card.editing .edit { display: block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .6rem; }
+  label { display: block; font-size: .72rem; color: var(--muted); margin-bottom: .25rem; font-weight: 600; }
+  input, select, textarea {
+    width: 100%; padding: .5rem .6rem; font-size: .9rem; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 9px;
+    background: var(--panel-2); color: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  /* 16px on mobile stops iOS Safari zooming on focus */
+  @media (max-width: 640px) { input, select, textarea { font-size: 16px; } }
+  .check { display: flex; align-items: center; gap: .5rem; }
+  .check input { width: auto; }
+  .check label { margin: 0; }
+
+  /* ---- buttons ---- */
+  button {
+    cursor: pointer; font-family: inherit; font-size: .85rem; font-weight: 600;
+    padding: .5rem .85rem; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--panel-2); color: inherit;
+    transition: filter .15s, background .15s;
+  }
+  button:hover { filter: brightness(1.06); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+  button.icon { padding: .4rem .6rem; font-weight: 500; color: var(--muted); }
+  .actions { display: flex; gap: .5rem; margin-top: .85rem; flex-wrap: wrap; }
+  .actions .spacer { flex: 1; }
+
+  details.adder { background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius); padding: .85rem 1rem; }
+  details.adder summary { cursor: pointer; font-weight: 600; font-size: .9rem; list-style: none; }
+  details.adder summary::-webkit-details-marker { display: none; }
+  details.adder summary::before { content: "+"; display: inline-block; width: 1.1rem; font-weight: 700; color: var(--accent); }
+  details.adder[open] summary { margin-bottom: .85rem; }
+
+  .empty { color: var(--muted); font-size: .9rem; text-align: center; padding: 1.5rem; border: 1px dashed var(--line); border-radius: var(--radius); }
+  footer { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 1rem; }
+  .status { font-size: .8rem; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    .card-main { flex-wrap: wrap; }
+    .card-id { flex-basis: 100%; }
+    .card-price { order: 2; }
+    .badge { order: 1; }
+    .card-main .spacer { flex: 1; order: 1; }
+  }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<h1>Subscription Tracker</h1>
-<p class="sub">Edit any field and hit Save. You'll get a Discord/email reminder once a subscription is within its notify window before renewal.</p>
+<header>
+  <h1>Subscriptions</h1>
+  <p>Reminders land in Discord before each renewal.</p>
+</header>
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Platform</th>
-      <th>Price</th>
-      <th>Start date</th>
-      <th>Cycle</th>
-      <th>Notify (days before)</th>
-      <th>Next renewal</th>
-      <th>Days left</th>
-      <th>Active</th>
-      <th class="actions">Actions</th>
-    </tr>
-  </thead>
-  <tbody id="sub-rows">
-    {% for s in subs %}
-    <tr data-id="{{ s.id }}" class="{{ 'overdue' if s.days_until_renewal <= 0 else ('due-soon' if s.days_until_renewal <= s.notify_days_before else '') }} {{ '' if s.active else 'inactive' }}">
-      <td><input data-field="name" value="{{ s.name }}"></td>
-      <td><input data-field="platform" value="{{ s.platform }}"></td>
-      <td><input data-field="price" type="number" step="0.01" value="{{ s.price }}"></td>
-      <td><input data-field="start_date" type="date" value="{{ s.start_date }}"></td>
-      <td>
-        <select data-field="billing_cycle">
-          <option value="monthly" {{ 'selected' if s.billing_cycle == 'monthly' }}>monthly</option>
-          <option value="yearly" {{ 'selected' if s.billing_cycle == 'yearly' }}>yearly</option>
-        </select>
-      </td>
-      <td><input data-field="notify_days_before" type="number" min="0" value="{{ s.notify_days_before }}"></td>
-      <td>{{ s.next_renewal }}</td>
-      <td>{{ s.days_until_renewal }}</td>
-      <td><input data-field="active" type="checkbox" {{ 'checked' if s.active }} style="width:auto;"></td>
-      <td class="actions">
-        <button class="primary" onclick="saveRow(this)">Save</button>
-        <button class="danger" onclick="deleteRow(this)">Delete</button>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<div class="add-row">
-  <h2>Add subscription</h2>
-  <div class="add-grid">
-    <div><label>Name</label><input id="new-name"></div>
-    <div><label>Platform</label><input id="new-platform"></div>
-    <div><label>Price</label><input id="new-price" type="number" step="0.01" value="0"></div>
-    <div><label>Start date</label><input id="new-start" type="date"></div>
-    <div><label>Cycle</label>
-      <select id="new-cycle">
-        <option value="monthly">monthly</option>
-        <option value="yearly">yearly</option>
-      </select>
-    </div>
-    <div><label>Notify (days before)</label><input id="new-notify" type="number" min="0" value="5"></div>
-    <div><button class="primary" onclick="addRow()">Add</button></div>
+<div class="stats">
+  <div class="stat hero">
+    <div class="label">Per month</div>
+    <div class="value">{{ currency }}{{ '%.2f'|format(totals.monthly) }}</div>
+    <div class="sub">{{ currency }}{{ '%.2f'|format(totals.yearly) }} / year</div>
+  </div>
+  <div class="stat">
+    <div class="label">Active</div>
+    <div class="value">{{ totals.active_count }}</div>
+    <div class="sub">of {{ subs|length }} tracked</div>
+  </div>
+  <div class="stat">
+    <div class="label">One-time this month</div>
+    <div class="value">{{ currency }}{{ '%.2f'|format(totals.one_time_this_month) }}</div>
+    <div class="sub">{{ currency }}{{ '%.2f'|format(totals.one_time_total) }} all time</div>
   </div>
 </div>
+
+<section>
+  <div class="section-head">
+    <h2>Recurring</h2>
+    <span class="count">{{ subs|length }} item{{ '' if subs|length == 1 else 's' }}</span>
+  </div>
+
+  {% for s in subs %}
+  <div class="card {{ '' if s.active else 'inactive' }}" data-id="{{ s.id }}">
+    <div class="card-main">
+      <div class="card-id">
+        <div class="card-name">{{ s.name }}</div>
+        <div class="card-meta">
+          {{ s.platform or 'No platform' }} &middot; renews {{ s.next_renewal }}
+        </div>
+      </div>
+      <div class="card-price">
+        {{ currency }}{{ '%.2f'|format(s.price) }}<span class="cycle">/{{ 'yr' if s.billing_cycle == 'yearly' else 'mo' }}</span>
+      </div>
+      {% if not s.active %}
+        <span class="badge off">Paused</span>
+      {% elif s.days_until_renewal < 0 %}
+        <span class="badge over">Overdue</span>
+      {% elif s.days_until_renewal == 0 %}
+        <span class="badge over">Today</span>
+      {% elif s.days_until_renewal <= s.notify_days_before %}
+        <span class="badge soon">{{ s.days_until_renewal }}d left</span>
+      {% else %}
+        <span class="badge">{{ s.days_until_renewal }}d left</span>
+      {% endif %}
+      <button class="icon" onclick="toggleEdit(this)">Edit</button>
+    </div>
+
+    <div class="edit">
+      <div class="grid">
+        <div><label>Name</label><input data-field="name" value="{{ s.name }}"></div>
+        <div><label>Platform</label><input data-field="platform" value="{{ s.platform }}"></div>
+        <div><label>Price</label><input data-field="price" type="number" step="0.01" inputmode="decimal" value="{{ s.price }}"></div>
+        <div><label>Start date</label><input data-field="start_date" type="date" value="{{ s.start_date }}"></div>
+        <div><label>Cycle</label>
+          <select data-field="billing_cycle">
+            <option value="monthly" {{ 'selected' if s.billing_cycle == 'monthly' }}>Monthly</option>
+            <option value="yearly" {{ 'selected' if s.billing_cycle == 'yearly' }}>Yearly</option>
+          </select>
+        </div>
+        <div><label>Notify days before</label><input data-field="notify_days_before" type="number" min="0" inputmode="numeric" value="{{ s.notify_days_before }}"></div>
+      </div>
+      <div class="actions">
+        <div class="check">
+          <input type="checkbox" id="active-{{ s.id }}" data-field="active" {{ 'checked' if s.active }}>
+          <label for="active-{{ s.id }}">Active</label>
+        </div>
+        <div class="spacer"></div>
+        <button class="danger" onclick="deleteRow(this, 'subscriptions')">Delete</button>
+        <button class="primary" onclick="saveRow(this, 'subscriptions')">Save</button>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty">No subscriptions yet — add one below.</div>
+  {% endfor %}
+
+  <details class="adder">
+    <summary>Add subscription</summary>
+    <div class="grid">
+      <div><label>Name</label><input id="new-name"></div>
+      <div><label>Platform</label><input id="new-platform"></div>
+      <div><label>Price</label><input id="new-price" type="number" step="0.01" inputmode="decimal" value="0"></div>
+      <div><label>Start date</label><input id="new-start" type="date"></div>
+      <div><label>Cycle</label>
+        <select id="new-cycle">
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div><label>Notify days before</label><input id="new-notify" type="number" min="0" inputmode="numeric" value="5"></div>
+    </div>
+    <div class="actions">
+      <div class="spacer"></div>
+      <button class="primary" onclick="addSub()">Add subscription</button>
+    </div>
+  </details>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>One-time payments</h2>
+    <span class="count">{{ payments|length }} item{{ '' if payments|length == 1 else 's' }}</span>
+  </div>
+
+  {% for p in payments %}
+  <div class="card" data-id="{{ p.id }}">
+    <div class="card-main">
+      <div class="card-id">
+        <div class="card-name">{{ p.name }}</div>
+        <div class="card-meta">
+          {{ p.platform or 'No platform' }} &middot; paid {{ p.paid_on }}{{ ' · ' ~ p.notes if p.notes }}
+        </div>
+      </div>
+      <div class="card-price">{{ currency }}{{ '%.2f'|format(p.price) }}</div>
+      <button class="icon" onclick="toggleEdit(this)">Edit</button>
+    </div>
+
+    <div class="edit">
+      <div class="grid">
+        <div><label>Name</label><input data-field="name" value="{{ p.name }}"></div>
+        <div><label>Platform</label><input data-field="platform" value="{{ p.platform }}"></div>
+        <div><label>Price</label><input data-field="price" type="number" step="0.01" inputmode="decimal" value="{{ p.price }}"></div>
+        <div><label>Paid on</label><input data-field="paid_on" type="date" value="{{ p.paid_on }}"></div>
+        <div><label>Notes</label><input data-field="notes" value="{{ p.notes }}"></div>
+      </div>
+      <div class="actions">
+        <div class="spacer"></div>
+        <button class="danger" onclick="deleteRow(this, 'payments')">Delete</button>
+        <button class="primary" onclick="saveRow(this, 'payments')">Save</button>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty">No one-time payments logged yet.</div>
+  {% endfor %}
+
+  <details class="adder">
+    <summary>Add one-time payment</summary>
+    <div class="grid">
+      <div><label>Name</label><input id="p-name"></div>
+      <div><label>Platform</label><input id="p-platform"></div>
+      <div><label>Price</label><input id="p-price" type="number" step="0.01" inputmode="decimal" value="0"></div>
+      <div><label>Paid on</label><input id="p-date" type="date"></div>
+      <div><label>Notes</label><input id="p-notes"></div>
+    </div>
+    <div class="actions">
+      <div class="spacer"></div>
+      <button class="primary" onclick="addPayment()">Add payment</button>
+    </div>
+  </details>
+</section>
 
 <footer>
   <button onclick="testNotify()">Send test notification</button>
   <span id="test-status" class="status"></span>
 </footer>
 
+</div>
 <script>
-async function saveRow(btn) {
-  const tr = btn.closest('tr');
-  const id = tr.dataset.id;
+function toggleEdit(btn) {
+  const card = btn.closest('.card');
+  card.classList.toggle('editing');
+  btn.textContent = card.classList.contains('editing') ? 'Close' : 'Edit';
+}
+
+async function saveRow(btn, kind) {
+  const card = btn.closest('.card');
   const payload = {};
-  tr.querySelectorAll('[data-field]').forEach(el => {
-    if (el.type === 'checkbox') payload[el.dataset.field] = el.checked ? 1 : 0;
-    else payload[el.dataset.field] = el.value;
+  card.querySelectorAll('[data-field]').forEach(el => {
+    payload[el.dataset.field] = el.type === 'checkbox' ? (el.checked ? 1 : 0) : el.value;
   });
-  const res = await fetch(`/api/subscriptions/${id}`, {
+  const res = await fetch(`/api/${kind}/${card.dataset.id}`, {
     method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
   });
-  if (res.ok) location.reload();
+  if (res.ok) location.reload(); else alert('Save failed.');
 }
 
-async function deleteRow(btn) {
-  const tr = btn.closest('tr');
-  if (!confirm(`Delete "${tr.querySelector('[data-field=name]').value}"?`)) return;
-  const res = await fetch(`/api/subscriptions/${tr.dataset.id}`, { method: 'DELETE' });
-  if (res.ok) location.reload();
+async function deleteRow(btn, kind) {
+  const card = btn.closest('.card');
+  if (!confirm(`Delete "${card.querySelector('[data-field=name]').value}"?`)) return;
+  const res = await fetch(`/api/${kind}/${card.dataset.id}`, { method: 'DELETE' });
+  if (res.ok) location.reload(); else alert('Delete failed.');
 }
 
-async function addRow() {
+async function addSub() {
   const payload = {
     name: document.getElementById('new-name').value,
     platform: document.getElementById('new-platform').value,
@@ -132,16 +370,33 @@ async function addRow() {
   const res = await fetch('/api/subscriptions', {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
   });
-  if (res.ok) location.reload();
+  if (res.ok) location.reload(); else alert('Could not add subscription.');
+}
+
+async function addPayment() {
+  const payload = {
+    name: document.getElementById('p-name').value,
+    platform: document.getElementById('p-platform').value,
+    price: document.getElementById('p-price').value,
+    paid_on: document.getElementById('p-date').value,
+    notes: document.getElementById('p-notes').value,
+  };
+  if (!payload.name || !payload.paid_on) { alert('Name and date are required.'); return; }
+  const res = await fetch('/api/payments', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+  });
+  if (res.ok) location.reload(); else alert('Could not add payment.');
 }
 
 async function testNotify() {
   const status = document.getElementById('test-status');
   status.textContent = 'Sending...';
   const res = await fetch('/api/test-notify', { method: 'POST' });
-  status.textContent = res.ok ? 'Sent (check Discord/email).' : 'Failed.';
+  status.textContent = res.ok ? 'Sent — check Discord.' : 'Failed.';
 }
-</script>
 
+// Default new-payment date to today
+document.getElementById('p-date').value = new Date().toISOString().slice(0, 10);
+</script>
 </body>
 </html>
