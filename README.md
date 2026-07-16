@@ -6,7 +6,9 @@ Currently deployed at **https://subs.baz-n8n.xyz** (protected by HTTP basic auth
 
 ## Features
 
-- Editable spreadsheet-style table in the browser: name, platform, price, start date, billing cycle (monthly/yearly), notify-days-before, active toggle.
+- Responsive card-based UI (works on phones), light/dark aware. Each entry shows name, platform, price and a renewal badge; editing is collapsed behind an Edit button.
+- Cost summary tiles: total **per month** (yearly subscriptions are divided by 12), the yearly equivalent, active count, and one-time-payment totals.
+- **One-time payments** tracked separately from recurring subscriptions (name, platform, price, date paid, notes), with "this month" and all-time totals. These are logged only — they never trigger reminders.
 - Automatically computes each subscription's next renewal date from its start date and billing cycle.
 - A daily background job (APScheduler) checks all active subscriptions and fires a reminder once a subscription enters its notify window (default: 5 days before renewal). Each renewal period only triggers one notification (tracked via `last_notified`), even if the check runs multiple times or the container restarts.
 - Notifications via **Discord webhook** and/or **email (SMTP)** — either or both can be configured; whichever has credentials set will fire.
@@ -51,6 +53,7 @@ See `.env.example`. Copy it to `.env` for local/docker-compose use (Coolify depl
 | var | required? | purpose |
 |---|---|---|
 | `DISCORD_WEBHOOK_URL` | optional | Discord webhook URL. Leave blank to disable Discord notifications. |
+| `DISCORD_USER_ID` | optional | Discord user ID to `@`-mention in reminders, so they ping rather than sit unread. Leave blank for no mention. Must be set in Coolify — it is deliberately not hardcoded, since this repo is public. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `NOTIFY_EMAIL_TO` | optional | SMTP credentials for email notifications. All must be set for email to send; leave blank to disable. Note: a plain account password often won't work (e.g. Proton Mail requires an app-specific SMTP token via Proton Mail Bridge, not your login password) — use an SMTP-capable credential like a Gmail app password. |
 | `NOTIFY_CHECK_HOUR` | optional (default `9`) | Hour (0–23, server local time) the daily renewal check runs. |
 | `BASIC_AUTH_USER`, `BASIC_AUTH_PASS` | optional | If `BASIC_AUTH_USER` is set, the whole app (except `/healthz`) requires HTTP basic auth with these credentials. Leave `BASIC_AUTH_USER` blank to disable auth (e.g. local dev). |
@@ -81,7 +84,8 @@ This app runs as part of a small self-hosted infrastructure:
 
 ```
 GitHub (Bazautomate/subscription-tracker, public repo)
-        │  Coolify pulls + builds on push (auto-deploy enabled)
+        │  Coolify clones + builds — but only when a deploy is triggered
+        │  by hand; pushing to master does NOT deploy (see "Redeploying")
         ▼
 n8n VM (see ~/.ssh/config host "n8n") — Coolify-managed
   Project: "vibe code"
@@ -100,13 +104,35 @@ https://subs.baz-n8n.xyz  (public, HTTP basic auth protected)
 
 ### Redeploying after a code change
 
-Coolify has auto-deploy enabled on this application, so pushing to `master` on GitHub triggers a rebuild automatically. To trigger one manually via Coolify's API:
+**Deploys are manual. Pushing to `master` does nothing on its own.**
+
+Coolify's auto-deploy toggle is on, but it is inert: it only acts when GitHub calls its webhook, and GitHub cannot reach this Coolify. There is no webhook registered on the repo, Coolify has no FQDN configured, and its port 8000 is firewalled off from the internet (upstream cloud firewall — the VM itself has no `ufw`/`iptables` rules). Verified 2026-07-16, after two pushes appeared to succeed while nothing deployed. Every other app on this box is deployed from a prebuilt Docker image and is likewise redeployed by hand.
+
+So after pushing, **deploy explicitly** — via the Coolify UI (app → Deploy), or from the VM:
 
 ```bash
-curl -X POST -H "Authorization: Bearer <coolify-api-token>" \
-  http://localhost:8000/api/v1/applications/givsjcr64afax7wqfgq8j0vh/start
+ssh n8n 'docker exec coolify php artisan tinker --execute="
+  \$app = App\Models\Application::where(\"uuid\", \"givsjcr64afax7wqfgq8j0vh\")->first();
+  queue_application_deployment(
+    application: \$app,
+    deployment_uuid: (string) new Visus\Cuid2\Cuid2(7),
+    force_rebuild: true,
+    is_api: true,
+  );
+"'
 ```
-(run from inside the n8n VM, or via SSH: `ssh n8n "curl ... http://localhost:8000/..."` — port 8000 isn't reachable from outside that VM).
+
+Then confirm what actually landed — a finished deploy is not proof the new code is running:
+
+```bash
+ssh n8n 'docker exec $(docker ps -q --filter name=givsjcr64afax7wqfgq8j0vh) printenv SOURCE_COMMIT'
+```
+
+Note: environment variables are Laravel-encrypted in Coolify's database. Set them through the UI or the `App\Models\EnvironmentVariable` model — **never** with raw SQL, or Coolify will fail to decrypt them. (The columns are `is_runtime` / `is_buildtime`.)
+
+### Gotcha: the running container can drift from git
+
+On 2026-07-15 the Discord `@`-mention was hot-patched directly into the live container's `app.py`, leaving an `app.py.bak` behind, and was never committed — so a rebuild would have silently reverted it. That fix now lives in git as `DISCORD_USER_ID`. Before redeploying, diff the container's files against the repo; a rebuild discards anything patched in by hand.
 
 ### Gotcha: Pangolin target IP must be `127.0.0.1`, not `localhost`
 
