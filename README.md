@@ -6,7 +6,7 @@ Currently deployed at **https://subs.baz-n8n.xyz** (protected by HTTP basic auth
 
 ## Features
 
-- Responsive card-based UI (works on phones), light/dark aware. Each entry shows name, platform, price and a renewal badge; editing is collapsed behind an Edit button.
+- Responsive card-based UI (works on phones), light/dark aware, with a dark-mode switch in the header (follows the OS preference until you pick one; the choice is remembered per browser via `localStorage`). Each entry shows name, platform, price and a renewal badge; editing is collapsed behind an Edit button.
 - Cost summary tiles: total **per month** (yearly subscriptions are divided by 12), the yearly equivalent, active count, and one-time-payment totals.
 - **One-time payments** tracked separately from recurring subscriptions (name, platform, price, date paid, notes), with "this month" and all-time totals. These are logged only — they never trigger reminders.
 - Automatically computes each subscription's next renewal date from its start date and billing cycle.

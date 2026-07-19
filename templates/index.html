@@ -7,6 +7,7 @@
 <title>Subscriptions</title>
 <style>
   :root {
+    color-scheme: light;
     --bg: #f6f7f9;
     --panel: #ffffff;
     --panel-2: #fbfbfd;
@@ -25,23 +26,24 @@
     --radius: 14px;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0b0d12;
-      --panel: #14171f;
-      --panel-2: #191d27;
-      --text: #e8eaf0;
-      --muted: #9aa3b2;
-      --line: #262b37;
-      --accent: #6366f1;
-      --warn-bg: #3b2f0e;
-      --warn-fg: #fcd34d;
-      --over-bg: #3d1519;
-      --over-fg: #fca5a5;
-      --ok-bg: #10281c;
-      --ok-fg: #6ee7b7;
-      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
-    }
+  /* Theme is resolved to an explicit data-theme on <html> by the head script
+     (saved choice, else OS preference), so dark only needs this one block. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b0d12;
+    --panel: #14171f;
+    --panel-2: #191d27;
+    --text: #e8eaf0;
+    --muted: #9aa3b2;
+    --line: #262b37;
+    --accent: #6366f1;
+    --warn-bg: #3b2f0e;
+    --warn-fg: #fcd34d;
+    --over-bg: #3d1519;
+    --over-fg: #fca5a5;
+    --ok-bg: #10281c;
+    --ok-fg: #6ee7b7;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
   }
   * { box-sizing: border-box; }
   body {
@@ -55,9 +57,25 @@
   }
   .wrap { max-width: 960px; margin: 0 auto; }
 
-  header { margin-bottom: 1.25rem; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
   h1 { font-size: 1.5rem; margin: 0; letter-spacing: -0.02em; }
   header p { color: var(--muted); margin: .25rem 0 0; font-size: .9rem; }
+
+  /* ---- theme switch ---- */
+  .theme-toggle {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.4rem; height: 2.4rem; padding: 0;
+    border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line);
+    color: var(--muted);
+    box-shadow: var(--shadow);
+  }
+  .theme-toggle:hover { color: var(--accent); filter: none; }
+  .theme-toggle svg { width: 1.1rem; height: 1.1rem; }
+  .theme-toggle .sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .sun { display: block; }
+  :root[data-theme="dark"] .theme-toggle .moon { display: none; }
 
   /* ---- stat tiles ---- */
   .stats {
@@ -161,13 +179,32 @@
     .card-main .spacer { flex: 1; order: 1; }
   }
 </style>
+<script>
+// Runs before first paint so there is no flash of the wrong theme.
+function storedTheme() {
+  try { return localStorage.getItem('theme'); } catch (e) { return null; }
+}
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0b0d12' : '#f6f7f9');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.setAttribute('aria-pressed', t === 'dark');
+}
+applyTheme(storedTheme() || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+</script>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <h1>Subscriptions</h1>
-  <p>Reminders land in Discord before each renewal.</p>
+  <div>
+    <h1>Subscriptions</h1>
+    <p>Reminders land in Discord before each renewal.</p>
+  </div>
+  <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch between light and dark mode" aria-pressed="false">
+    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
 </header>
 
 <div class="stats">
@@ -332,6 +369,18 @@
 
 </div>
 <script>
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('theme', next); } catch (e) {}
+  applyTheme(next);
+}
+// Follow OS theme changes live, but only while the user hasn't picked one.
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light');
+});
+// The head script ran before the button existed; sync its pressed state now.
+applyTheme(document.documentElement.dataset.theme);
+
 function toggleEdit(btn) {
   const card = btn.closest('.card');
   card.classList.toggle('editing');
